@@ -597,22 +597,26 @@ def get_keychain(*argv):
 	ssh = argv[0]
 	app = argv[1]
 
-	
 	app['keychain'] = []
+	path = '~/Keychain-Dumper/keychain_dumper'
 
 	try:
-		result = send_command(ssh, '~/Keychain-Dumper/keychain_dumper')
+		exist = send_command(ssh, 'test -e ' + path + ' && echo file exists || echo file not found')
+		if not 'exists' in exist:
+			print_execution_stat('  Class-Dump: ', 'FAIL', '~/Keychain-Dumper/keychain_dumper2 not found')
+		else:
+			result = send_command(ssh, path)
 
-		result  = result.split('----------------')
-		for section in result:
-			if app['Identifier'] in section:
-				dictionary = {}
-				for item in section.split('\n')[1:-3]:
-					i = item.split(':')
-					dictionary[i[0]] = i[1].strip()
-				app['keychain'].append(dictionary)
+			result  = result.split('----------------')
+			for section in result:
+				if app['Identifier'] in section:
+					dictionary = {}
+					for item in section.split('\n')[1:-3]:
+						i = item.split(':')
+						dictionary[i[0]] = i[1].strip()
+					app['keychain'].append(dictionary)
 
-		print_execution_stat('  Class-Dump: ', 'OK', 'OK')
+			print_execution_stat('  Class-Dump: ', 'OK', 'OK')
 	except Exception as e:
 		print_execution_stat('  Class-Dump: ', 'FAIL', e)
 
@@ -622,10 +626,15 @@ def show_keychain(*argv):
 	print '\n########### KEYCHAIN ###########\n'
 
 	try:
+		first = False
 		for section in app['keychain']:
+			if first:
+				print '-----------------'
+			first = True
 			for item in section:
 				print item + ': ' + section[item]
-			print '-----------------'
+
+
 	except Exception as e:
 		print_execution_stat('  Error: ', 'FAIL', 'Obtain the data stored in keychain first!')
 
