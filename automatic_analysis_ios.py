@@ -395,6 +395,7 @@ def show_vulnerabilities(*argv):
 		'clutch',
 		'classdump',
 		'regex_search',
+		'keychain',
 	]
 	print '\n########### DETECTED VULNERABILITIES ###########\n'
 	for vuln in available_vulns:
@@ -483,6 +484,15 @@ def show_vulnerabilities(*argv):
 				print_execution_stat(' Regex search: ', 'OK', 'OK')	
 			else: 
 				print_execution_stat(' Regex search: ', 'FAIL', 'POTENTIALLY VULNERABLE')
+				for item in app[vuln]:
+					print '\t' + item
+		if vuln == 'keychain': 
+			if vuln not in app:
+				print ' Keychain: ?'
+			elif not app[vuln]:
+				print_execution_stat(' Keychain: ', 'OK', 'OK')	
+			else: 
+				print_execution_stat(' Keychain: ', 'FAIL', 'POTENTIALLY VULNERABLE')
 				for item in app[vuln]:
 					print '\t' + item
 	print '\n##################################################\n'
@@ -583,6 +593,45 @@ def search_with_regex(*argv):
 	if not regex_found:
 		print_execution_stat('  Regex search: ', 'WARNING', 'No regex selected')
 
+def get_keychain(*argv):
+	ssh = argv[0]
+	app = argv[1]
+
+	
+	app['keychain'] = []
+
+	try:
+		result = send_command(ssh, '~/Keychain-Dumper/keychain_dumper')
+
+		result  = result.split('----------------')
+		for section in result:
+			if app['Identifier'] in section:
+				dictionary = {}
+				for item in section.split('\n')[1:-3]:
+					i = item.split(':')
+					dictionary[i[0]] = i[1].strip()
+				app['keychain'].append(dictionary)
+
+		print_execution_stat('  Class-Dump: ', 'OK', 'OK')
+	except Exception as e:
+		print_execution_stat('  Class-Dump: ', 'FAIL', e)
+
+def show_keychain(*argv):
+	app = argv[1]
+
+	print '\n########### KEYCHAIN ###########\n'
+
+	try:
+		for section in app['keychain']:
+			for item in section:
+				print item + ': ' + section[item]
+			print '-----------------'
+	except Exception as e:
+		print_execution_stat('  Error: ', 'FAIL', 'Obtain the data stored in keychain first!')
+
+
+	print '\n################################\n'
+
 def set_regex(*argv):
 	ssh = argv[0]
 	app = argv[1]
@@ -622,6 +671,7 @@ def set_regex(*argv):
 			elif num == 0:
 				break
 		except Exception as e:
+			print e
 			continue
 
 
@@ -652,16 +702,18 @@ def main(args):
 	}
 	OPTIONS['Other'] = {
 		15: (convert_plist,'Convert binary plist to XML'),
-		16: (search_with_regex, 'Search using regex')
+		16: (search_with_regex, 'Search using regex'),
+		17: (get_keychain,'Obtain the data stored in keychain'),
 	}
 	OPTIONS['Configuration'] = {
-		17: (set_key_words,'Set key words'),
-		18: (set_work_path,'Set work folder'),
-		19: (set_regex, 'Set regex'),
+		18: (set_key_words,'Set key words'),
+		19: (set_work_path,'Set work folder'),
+		20: (set_regex, 'Set regex'),
 	}
 	OPTIONS['Results'] = {
-		20: (show_app_info,'Show app basic information'),
-		21: (show_vulnerabilities,'Show detected vulnerabilities'),
+		21: (show_app_info,'Show app basic information'),
+		22: (show_vulnerabilities,'Show detected vulnerabilities'),
+		23: (show_keychain,'Show the data stored in keychain'),
 	}
 
 	test_results = ['Results','Configuration'] # Avoid printing ### TEST RESULTS ### in this group
@@ -709,7 +761,7 @@ def main(args):
 				if option in OPTIONS[key]:
 					if key not in test_results:
 						print "\n##################### TEST RESULTS #####################\n"
-					if option == 17: # set keywords
+					if option == 18: # set keywords
 						keywords = OPTIONS[key][option][0](ssh,app,keywords,OPTIONS)
 					else:
 						OPTIONS[key][option][0](ssh,app,keywords,OPTIONS)
